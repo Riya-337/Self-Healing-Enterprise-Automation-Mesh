@@ -1,0 +1,14 @@
+{
+  "name": "sentihealth-webapp",
+  "version": "1.0.0",
+  "description": "Mock EHR server for SentiHealth",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^8.4.1",
+    "express": "^4.19.2",
+    "uuid": "^9.0.1"
+  }
+}
