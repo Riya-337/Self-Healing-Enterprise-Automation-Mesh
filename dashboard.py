@@ -40,30 +40,28 @@ def api_status():
     return jsonify(get_system_state())
 
 def get_metrics_html():
-    if not os.path.exists('MODEL_METRICS.md'):
+    if not os.path.exists('evaluation_metrics.json'):
         return "<p style='color: #888;'>Metrics not generated yet.</p>"
-    with open('MODEL_METRICS.md', 'r') as f:
-        content = f.read()
-    
-    lines = content.strip().split('\n')
-    table_lines = [l for l in lines if l.strip().startswith('|')]
-    if not table_lines: return ""
-    
-    html = "<table><thead><tr>"
-    headers = [h.strip() for h in table_lines[0].split('|')[1:-1]]
+    with open('evaluation_metrics.json', 'r') as f:
+        metrics = json.load(f)
+        
+    html = "<h3><strong>Overall Operational Performance</strong></h3>\n"
+    html += "<table><thead><tr>"
+    headers = ["Model", "Accuracy", "Precision", "Recall", "F1 Score", "AUC-ROC"]
     for h in headers:
         html += f"<th>{h}</th>"
     html += "</tr></thead><tbody>"
     
-    for row in table_lines[2:]:
-        cols = [c.strip() for c in row.split('|')[1:-1]]
+    for row in metrics:
         html += "<tr>"
-        for i, c in enumerate(cols):
-            if i == 0:
-                html += f"<td><strong>{c}</strong></td>"
-            else:
-                html += f"<td>{c}</td>"
+        html += f"<td><strong>{row['model']}</strong></td>"
+        html += f"<td>{row['accuracy']:.4f}</td>"
+        html += f"<td>{row['precision']:.4f}</td>"
+        html += f"<td>{row['recall']:.4f}</td>"
+        html += f"<td>{row['f1']:.4f}</td>"
+        html += f"<td>{row['auc_roc']:.4f}</td>"
         html += "</tr>"
+        
     html += "</tbody></table>"
     return html
 

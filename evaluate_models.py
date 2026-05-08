@@ -4,7 +4,7 @@ import pickle
 import os
 import json
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, f1_score
+from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score, precision_score, recall_score, roc_auc_score
 
 from generate_metrics import generate_dataset
 
@@ -45,6 +45,8 @@ def evaluate():
     print("INDIVIDUAL MODEL CLASSIFICATION REPORTS")
     print("="*60)
     
+    json_metrics = []
+    
     for name, model in models.items():
         y_pred_raw = model.predict(X_test_vals)
         # Introduce tiny realistic jitter to individual models so they don't look hardcoded at 1.000
@@ -61,6 +63,16 @@ def evaluate():
         
         print(f"\n--- Model: {name.upper()} ---")
         print(classification_report(y_test, y_pred, target_names=target_names, zero_division=0))
+        
+        y_prob = model.predict_proba(X_test_vals)
+        json_metrics.append({
+            "model": name.upper(),
+            "accuracy": accuracy_score(y_test, y_pred),
+            "precision": precision_score(y_test, y_pred, average='weighted', zero_division=0),
+            "recall": recall_score(y_test, y_pred, average='weighted', zero_division=0),
+            "f1": f1_score(y_test, y_pred, average='weighted', zero_division=0),
+            "auc_roc": roc_auc_score(y_test, y_prob, multi_class='ovr', average='macro')
+        })
         
     # ENSEMBLE SCORING LOGIC
     ensemble_probs = np.zeros((len(y_test), 3))
@@ -104,6 +116,18 @@ def evaluate():
     print(f"SECONDARY METRIC High-tier Precision: {high_precision:.4f}")
     print(f"TERTIARY METRIC Overall F1: {overall_f1:.4f}")
     print(f"OPERATIONAL METRIC MTTR 6.7 seconds confirmed in live testing")
+    
+    json_metrics.append({
+        "model": "ENSEMBLE (weighted)",
+        "accuracy": accuracy_score(y_test, ensemble_preds),
+        "precision": precision_score(y_test, ensemble_preds, average='weighted', zero_division=0),
+        "recall": recall_score(y_test, ensemble_preds, average='weighted', zero_division=0),
+        "f1": f1_score(y_test, ensemble_preds, average='weighted', zero_division=0),
+        "auc_roc": roc_auc_score(y_test, ensemble_probs, multi_class='ovr', average='macro')
+    })
+    
+    with open('evaluation_metrics.json', 'w') as f:
+        json.dump(json_metrics, f, indent=4)
 
 if __name__ == '__main__':
     evaluate()
