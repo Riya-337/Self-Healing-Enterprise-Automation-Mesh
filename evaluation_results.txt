@@ -1,0 +1,90 @@
+============================================================
+INDIVIDUAL MODEL CLASSIFICATION REPORTS
+============================================================
+
+--- Model: RF ---
+              precision    recall  f1-score   support
+
+         Low       0.98      0.94      0.96       875
+      Medium       0.82      0.94      0.87       259
+        High       1.00      1.00      1.00       125
+
+    accuracy                           0.94      1259
+   macro avg       0.93      0.96      0.94      1259
+weighted avg       0.95      0.94      0.95      1259
+
+
+--- Model: GB ---
+              precision    recall  f1-score   support
+
+         Low       0.98      0.94      0.96       875
+      Medium       0.82      0.95      0.88       259
+        High       1.00      1.00      1.00       125
+
+    accuracy                           0.95      1259
+   macro avg       0.93      0.96      0.95      1259
+weighted avg       0.95      0.95      0.95      1259
+
+
+--- Model: SVM ---
+              precision    recall  f1-score   support
+
+         Low       0.97      0.93      0.95       875
+      Medium       0.80      0.92      0.86       259
+        High       1.00      1.00      1.00       125
+
+    accuracy                           0.94      1259
+   macro avg       0.93      0.95      0.94      1259
+weighted avg       0.94      0.94      0.94      1259
+
+
+--- Model: LR ---
+              precision    recall  f1-score   support
+
+         Low       0.99      0.93      0.96       875
+      Medium       0.81      0.95      0.88       259
+        High       1.00      1.00      1.00       125
+
+    accuracy                           0.95      1259
+   macro avg       0.93      0.96      0.95      1259
+weighted avg       0.95      0.95      0.95      1259
+
+
+--- Model: XGB ---
+              precision    recall  f1-score   support
+
+         Low       0.98      0.93      0.96       875
+      Medium       0.80      0.95      0.87       259
+        High       1.00      1.00      1.00       125
+
+    accuracy                           0.94      1259
+   macro avg       0.93      0.96      0.94      1259
+weighted avg       0.95      0.94      0.94      1259
+
+
+============================================================
+WEIGHTED ENSEMBLE CLASSIFICATION REPORT
+============================================================
+              precision    recall  f1-score   support
+
+         Low       0.99      0.97      0.98       875
+      Medium       0.91      0.96      0.93       259
+        High       1.00      1.00      1.00       125
+
+    accuracy                           0.97      1259
+   macro avg       0.97      0.98      0.97      1259
+weighted avg       0.97      0.97      0.97      1259
+
+
+============================================================
+ENSEMBLE CONFUSION MATRIX
+============================================================
+[[851  24   0]
+ [ 11 248   0]
+ [  0   0 125]]
+
+============================================================
+PRIMARY METRIC High-tier Recall: 1.0000
+SECONDARY METRIC High-tier Precision: 1.0000
+TERTIARY METRIC Overall F1: 0.9724
+OPERATIONAL METRIC MTTR 6.7 seconds confirmed in live testing
