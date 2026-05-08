@@ -1,4 +1,4 @@
-# SentiHealth: Autonomous AI Cybersecurity & Self-Healing Framework
+# sentiHealth
 
 An autonomous, zero-cloud healthcare cybersecurity framework that leverages Machine Learning to detect threats in milliseconds and execute self-healing protocols with human-in-the-loop authorization.
 
@@ -7,13 +7,35 @@ An autonomous, zero-cloud healthcare cybersecurity framework that leverages Mach
 [Node.js EHR] → [events.jsonl] → [live_sentinel.py] → [ML Ensemble] → [Self-Healing Responder] → [Telegram Alert] / [audit_chain.json]
 ```
 
-## Quickstart
-1. Install dependencies: `source setup.sh`
-2. Start the EHR server (Terminal 1): `cd webapp && node app.js`
-3. Start the sentinel (Terminal 2): `source .venv/bin/activate && python3 live_sentinel.py`
-4. Start the dashboard (Terminal 3): `source .venv/bin/activate && python3 dashboard.py`
-5. Run an attack (Terminal 4): `source .venv/bin/activate && python3 attack_scripts/exfiltration.py`
-6. View the dashboard: Open `http://localhost:5001` in your browser
+## Execution Code (Quickstart)
+
+Open 4 separate terminal windows and run the following commands in order:
+
+**Terminal 1 (Install & Start EHR Server):**
+```bash
+source setup.sh
+cd webapp && node app.js
+```
+
+**Terminal 2 (Start Live Sentinel AI):**
+```bash
+source .venv/bin/activate
+export SENTIHEALTH_TEST_MODE=1
+python3 live_sentinel.py
+```
+
+**Terminal 3 (Start Live Dashboard):**
+```bash
+source .venv/bin/activate
+python3 dashboard.py
+```
+*View the dashboard at `http://localhost:5001` in your browser.*
+
+**Terminal 4 (Launch Cyberattack Simulation):**
+```bash
+source .venv/bin/activate
+python3 attack_scripts/exfiltration.py
+```
 
 ## Technologies Used
 | Component | Technology |
