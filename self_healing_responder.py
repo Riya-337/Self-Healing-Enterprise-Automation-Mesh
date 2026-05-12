@@ -67,7 +67,7 @@ def block_ip(ip_address: str):
                 if line.strip():
                     blocked_ips.add(json.loads(line)['ip'])
     if ip_address in blocked_ips:
-        print(f"[*] IP {ip_address} is already blocked. Operational response maintained.")
+        # print(f"[*] IP {ip_address} is already blocked. Operational response maintained.")
         return
     with open('logs/blocked_ips.json', 'a') as f:
         f.write(json.dumps({"ip": ip_address, "time": datetime.now(timezone.utc).isoformat()}) + "\n")

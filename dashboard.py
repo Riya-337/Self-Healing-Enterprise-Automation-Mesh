@@ -55,11 +55,11 @@ def get_metrics_html():
     for row in metrics:
         html += "<tr>"
         html += f"<td><strong>{row['model']}</strong></td>"
-        html += f"<td>{row['accuracy']:.4f}</td>"
-        html += f"<td>{row['precision']:.4f}</td>"
-        html += f"<td>{row['recall']:.4f}</td>"
-        html += f"<td>{row['f1']:.4f}</td>"
-        html += f"<td>{row['auc_roc']:.4f}</td>"
+        html += f"<td>{row['accuracy']:.2f}</td>"
+        html += f"<td>{row['precision']:.2f}</td>"
+        html += f"<td>{row['recall']:.2f}</td>"
+        html += f"<td>{row['f1']:.2f}</td>"
+        html += f"<td>{row['auc_roc']:.2f}</td>"
         html += "</tr>"
         
     html += "</tbody></table>"
