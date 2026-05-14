@@ -61,6 +61,7 @@ low_count = 0
 medium_count = 0
 high_count = 0
 session_events = []
+session_peak_event = None  # full result dict of the highest-scoring event in the session
 
 _alert_claim_lock = threading.Lock()
 _auth_lock = threading.Lock()
@@ -91,9 +92,9 @@ def _send_medium_summary(ip, incident):
         f"Duration    : {duration_str}s\n"
         f"Events      : {incident['event_count']} Medium-tier\n"
         f"Peak Score  : {incident['peak_score']:.3f}\n"
-        f"Top Signals : failed_logins={pf.get('failed_logins')}, "
-        f"cpu_usage={pf.get('cpu_usage')}, "
-        f"ehr_access={pf.get('ehr_access_per_hour')}\n"
+        f"Top Signals : failed_logins={round(pf.get('failed_logins', 0), 2)}, "
+        f"cpu_usage={round(pf.get('cpu_usage', 0), 2)}, "
+        f"ehr_access={round(pf.get('ehr_access_per_hour', 0), 2)}\n"
         f"Actions     : {', '.join(incident['actions'])}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"✅ Contained autonomously. No action required."
@@ -150,9 +151,12 @@ def send_telegram_message(msg):
         return None
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     try:
-        res = requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, verify=False)
+        res = requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, verify=False, timeout=15)
         print(f"[TELEGRAM API RESPONSE] {res.status_code}: {res.text}")
         return res
+    except requests.exceptions.Timeout:
+        print("[TELEGRAM] sendMessage timed out after 15s — skipping")
+        return None
     except Exception as e:
         print(f"Error sending Telegram message: {e}")
         return None
@@ -164,9 +168,12 @@ def send_telegram_photo(photo_path, caption=""):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
     try:
         with open(photo_path, 'rb') as f:
-            res = requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption}, files={"photo": f}, verify=False)
+            res = requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption}, files={"photo": f}, verify=False, timeout=15)
         print(f"[TELEGRAM API RESPONSE] {res.status_code}: {res.text}")
         return res
+    except requests.exceptions.Timeout:
+        print("[TELEGRAM] sendPhoto timed out after 15s — falling back to text message")
+        return None
     except Exception as e:
         print(f"Error sending Telegram photo: {e}")
         return None
@@ -185,10 +192,13 @@ def wait_for_telegram_approval(prompt_msg, timeout_sec=90, accept_ignore=False):
     
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
     try:
-        init_req = requests.get(url, verify=False).json()
+        init_req = requests.get(url, verify=False, timeout=10).json()
         last_update_id = 0
         if init_req.get("ok") and len(init_req["result"]) > 0:
             last_update_id = init_req["result"][-1]["update_id"]
+            # Reset dedup tracker to the current offset so previous session's
+            # YES update_id cannot block this session's new YES reply.
+            _last_processed_update_id[0] = last_update_id
     except:
         last_update_id = 0
 
@@ -196,7 +206,7 @@ def wait_for_telegram_approval(prompt_msg, timeout_sec=90, accept_ignore=False):
     while time.time() - start_t < timeout_sec:
         time.sleep(2)
         try:
-            resp = requests.get(f"{url}?offset={last_update_id + 1}&timeout=5", verify=False).json()
+            resp = requests.get(f"{url}?offset={last_update_id + 1}&timeout=5", verify=False, timeout=10).json()
             if resp.get("ok") and len(resp["result"]) > 0:
                 for update in resp["result"]:
                     last_update_id = update["update_id"]
@@ -206,7 +216,7 @@ def wait_for_telegram_approval(prompt_msg, timeout_sec=90, accept_ignore=False):
                             with _auth_lock:
                                 update_id = update.get("update_id", 0)
                                 if update_id <= _last_processed_update_id[0]:
-                                    break
+                                    continue  # skip this stale update, check the rest
                                 _last_processed_update_id[0] = update_id
                                 return "YES"
                         if text == "IGNORE" and accept_ignore: return "IGNORE"
@@ -282,7 +292,7 @@ def generate_shap_chart(ip, features):
     plt.close()
     return path
 
-def update_threat_log_action(ip, new_action):
+def update_threat_log_action(ip, new_action, from_action='pending'):
     try:
         if not os.path.exists('logs/threat_log.json'): return
         with open('logs/threat_log.json', 'r') as f:
@@ -290,10 +300,10 @@ def update_threat_log_action(ip, new_action):
         for i in range(len(lines)-1, -1, -1):
             if not lines[i].strip(): continue
             data = json.loads(lines[i])
-            if data['ip'] == ip and data['action'] == 'pending':
+            if data['ip'] == ip and data['action'] == from_action:
                 data['action'] = new_action
                 lines[i] = json.dumps(data) + '\n'
-                break
+                # No break — update ALL matching entries for this IP
         with open('logs/threat_log.json', 'w') as f:
             f.writelines(lines)
     except Exception:
@@ -333,10 +343,12 @@ def handle_high_tier_threat(ip, features, result, alert_msg):
         send_telegram_message(summary)
         
         # Post-attack Summary Report
-        global session_start_time, low_count, medium_count, high_count, session_events
+        global session_start_time, low_count, medium_count, high_count, session_events, session_peak_event
         duration = time.time() - session_start_time if session_start_time else 0
         peak = max(session_events) if session_events else result['raw_score']
-        top_3 = result.get('plain_english_explanation', 'N/A')
+        # Use the explanation from the peak event, not the current triggering event
+        top_3 = (session_peak_event.get('plain_english_explanation', 'N/A')
+                 if session_peak_event else result.get('plain_english_explanation', 'N/A'))
         
         report = (
             f"✅ Attack Session Summary\n"
@@ -356,6 +368,7 @@ def handle_high_tier_threat(ip, features, result, alert_msg):
         medium_count = 0
         high_count = 0
         session_events.clear()
+        session_peak_event = None
         
     else:
         print("\n\033[93m[-] Authorization denied. System holding defensive posture.\033[0m")
@@ -363,7 +376,7 @@ def handle_high_tier_threat(ip, features, result, alert_msg):
         send_telegram_message("❌ Action aborted. Defensive posture maintained.")
 
 def run_live_sentinel():
-    global session_start_time, low_count, medium_count, high_count, session_events, session_high_ips
+    global session_start_time, low_count, medium_count, high_count, session_events, session_high_ips, session_peak_event
     print("="*60)
     print("🛡️  SENTINELHEALTH LIVE WATCHDOG ACTIVATED 🛡️")
     if TELEGRAM_BOT_TOKEN == "YOUR_TELEGRAM_BOT_TOKEN":
@@ -372,13 +385,13 @@ def run_live_sentinel():
         try:
             import urllib3
             urllib3.disable_warnings()
-            res = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe", verify=False)
+            res = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe", verify=False, timeout=10)
             if res.status_code == 200 and res.json().get("ok") == True:
                 print("\033[92mTELEGRAM CONNECTED. Waiting for live web traffic...\033[0m")
             else:
                 print(f"\033[91mTELEGRAM ERROR: {res.status_code} {res.text}\033[0m")
-        except Exception as e:
-            print(f"\033[91mTELEGRAM CONNECTION FAILED: {e}\033[0m")
+        except requests.exceptions.Timeout:
+            print("\033[91mTELEGRAM TIMEOUT: Could not reach api.telegram.org in 10s. Check your network/VPN.\033[0m")
     print("="*60)
 
     log_file = 'logs/events.jsonl'
@@ -391,6 +404,7 @@ def run_live_sentinel():
     seen_ids = set()  # in-memory only, resets on restart
     global session_high_ips
     session_high_ips = set()
+    session_peak_event = None
     last_high_alert_time = {}
     import collections
     last_high_alert_count = collections.defaultdict(int)
@@ -426,7 +440,7 @@ def run_live_sentinel():
             logger.info(f"{Fore.WHITE}Tier={result['tier']} | Score={result['raw_score']:.3f}")
             
             # SESSION COUNTERS AND TIMING
-            if session_start_time is None:
+            if result['tier'] == 'High' and session_start_time is None:
                 session_start_time = time.time()
                 
             # Note: incrementing is handled inside respond now, so we don't do it here!
@@ -434,8 +448,23 @@ def run_live_sentinel():
             # So I will remove incrementing here.
             
             session_events.append(result['raw_score'])
+            # Track the full result dict of the highest-scoring event for use in the summary
+            if session_peak_event is None or result['raw_score'] > session_peak_event['raw_score']:
+                session_peak_event = result.copy()
 
             _respond_result = result.copy()
+
+            if result['tier'] == 'High':
+                _now = time.time()
+                with _alert_claim_lock:
+                    _last = alerted_ips.get(ip, 0)
+                    if _now - _last < ALERT_COOLDOWN_SECS:
+                        result['dedup_suppress'] = True
+                        _respond_result['dedup_suppress'] = True
+                    else:
+                        alerted_ips[ip] = _now
+                        _respond_result['dedup_suppress'] = False
+
             shap_path = None
 
             if result['tier'] == 'High':
@@ -456,7 +485,17 @@ def run_live_sentinel():
                 print(f"{Fore.CYAN}[*] Low-level anomaly logged from {ip} | Score: {result['raw_score']:.3f}")
 
             with open('logs/threat_log.json', 'a') as flog:
-                action = "pending" if result['tier'] == 'High' else "resolved"
+                # High-tier events start as 'pending' ONLY if they will spawn a
+                # handle_high() thread (i.e. dedup_suppress is False).  Cooldown-
+                # suppressed High events are already contained by the original
+                # alert's actions — write them as 'resolved' immediately so they
+                # don't become orphaned 'pending' entries in the dashboard.
+                if result['tier'] == 'High' and not result.get('dedup_suppress'):
+                    action = "pending"
+                elif result['tier'] == 'High' and result.get('dedup_suppress'):
+                    action = "resolved"
+                else:
+                    action = "resolved"
                 flog.write(json.dumps({"ip": ip, "tier": result['tier'], "score": result['raw_score'], "timestamp": datetime.now(timezone.utc).isoformat(), "action": action}) + "\n")
             
             _respond_result['shap_img_path'] = shap_path
@@ -495,21 +534,13 @@ def run_live_sentinel():
                         ).start()
                         logger.info(f"{Fore.MAGENTA}[MEDIUM→HIGH ESCALATION] Medium summary fired for {ip}")
                         
-                _now = time.time()
-                _send_telegram = False
-                with _alert_claim_lock:
-                    _last = alerted_ips.get(ip, 0)
-                    if _now - _last < ALERT_COOLDOWN_SECS:
-                        logger.info(
-                            f"{Fore.MAGENTA}[COOLDOWN] High alert suppressed for {ip} — "
-                            f"{int(ALERT_COOLDOWN_SECS - (_now - _last))}s remaining"
-                        )
-                        result['dedup_suppress'] = True
-                        _respond_result['dedup_suppress'] = True
-                    else:
-                        alerted_ips[ip] = _now
-                        _send_telegram = True
-                        _respond_result['dedup_suppress'] = False
+                if result.get('dedup_suppress'):
+                    _now = time.time()
+                    _last = alerted_ips.get(ip, 0) # This was the original time, not updated during suppression
+                    logger.info(
+                        f"{Fore.MAGENTA}[COOLDOWN] High alert suppressed for {ip} — "
+                        f"{int(ALERT_COOLDOWN_SECS - (_now - _last))}s remaining"
+                    )
                 
                 responder_res = respond(_respond_result, ip_address=ip, telegram=True)
             if responder_res.get('status') in ['RESTRICTED', 'WAITING_HUMAN_AUTH']:

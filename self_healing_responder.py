@@ -67,7 +67,7 @@ def block_ip(ip_address: str):
                 if line.strip():
                     blocked_ips.add(json.loads(line)['ip'])
     if ip_address in blocked_ips:
-        # print(f"[*] IP {ip_address} is already blocked. Operational response maintained.")
+        print(f"[*] IP {ip_address} is already blocked. Operational response maintained.")
         return
     with open('logs/blocked_ips.json', 'a') as f:
         f.write(json.dumps({"ip": ip_address, "time": datetime.now(timezone.utc).isoformat()}) + "\n")
@@ -169,7 +169,6 @@ def respond(classification: dict, auth_token: str = None, ip_address: str = 'Unk
         live_sentinel.high_count += 1
         
         try:
-            block_ip(ip_address)
             throttle_bandwidth(percent=1)
             snapshot_database()
             if not classification.get('dedup_suppress'):
@@ -192,13 +191,24 @@ def respond(classification: dict, auth_token: str = None, ip_address: str = 'Unk
                     
                     if not photo_sent:
                         url = f"https://api.telegram.org/bot{live_sentinel.TELEGRAM_BOT_TOKEN}/sendMessage"
-                        res = __import__('requests').post(url, json={"chat_id": live_sentinel.TELEGRAM_CHAT_ID, "text": msg}, verify=False)
+                        res = __import__('requests').post(url, json={"chat_id": live_sentinel.TELEGRAM_CHAT_ID, "text": msg}, verify=False, timeout=15)
                         if res.status_code != 200:
                             print(f"Telegram API Error: {res.text}")
                 
+                # BUG 2 FIX: capture session_start_time NOW, before the thread starts,
+                # so the closure always sees the correct start even if the global is
+                # reset to None by a concurrent session that finishes first.
+                _captured_session_start = live_sentinel.session_start_time
+
                 def handle_high():
                     reply = live_sentinel.wait_for_telegram_approval(None if ('photo_sent' in locals() and photo_sent) else msg, timeout_sec=90)
                     if reply == "YES":
+                        # BUG 3 FIX: update threat_log.json so dashboard shows forensics_generated
+                        live_sentinel.update_threat_log_action(ip_address, "forensics_generated")
+
+                        block_ip(ip_address)
+                        user_id = classification.get('features', {}).get('user_id', 'Unknown')
+                        lock_account(user_id)
                         with open(f'logs/forensic_report_{event_id}.json', 'w') as flog:
                             json.dump(classification, flog)
                         
@@ -220,9 +230,13 @@ def respond(classification: dict, auth_token: str = None, ip_address: str = 'Unk
                         live_sentinel.send_telegram_message("✅ SYSTEM HELD IN CONTAINMENT — Forensic report generated — Human team must restore services manually.")
                         
                         # High Summary
-                        duration = time.time() - live_sentinel.session_start_time if live_sentinel.session_start_time else 0.0
-                        peak = max(live_sentinel.session_events) if live_sentinel.session_events else classification['raw_score']
-                        top_3 = classification.get('plain_english_explanation', 'N/A')
+                        # BUG 2 FIX: use _captured_session_start (local, not global) for duration
+                        duration = time.time() - _captured_session_start if _captured_session_start else 0.0
+                        # BUG 1 FIX: use session_peak_event for both peak score and top_3 so they match
+                        peak_evt = live_sentinel.session_peak_event
+                        peak = peak_evt['raw_score'] if peak_evt else (max(live_sentinel.session_events) if live_sentinel.session_events else classification['raw_score'])
+                        top_3 = (peak_evt.get('plain_english_explanation', 'N/A')
+                                 if peak_evt else classification.get('plain_english_explanation', 'N/A'))
                         
                         summary_msg2 = (f"✅ Attack Session Summary\n"
                                f"Duration: {duration:.1f}s\n"
@@ -231,16 +245,42 @@ def respond(classification: dict, auth_token: str = None, ip_address: str = 'Unk
                                f"Top Features: {top_3}\n"
                                f"Final Status: CONTAINED")
                                
+                        # Ghost session guard (BUG 2 FIX): if all counters are already zero
+                        # a stale YES from a previous session triggered this thread — suppress.
+                        total_events = live_sentinel.low_count + live_sentinel.medium_count + live_sentinel.high_count
+                        if total_events == 0:
+                            print("[WARNING] Ghost session detected — zero events in session counters. Summary suppressed.")
+                            return
+
                         if not os.environ.get("TELEGRAM_BOT_TOKEN", "").strip():
                             print("TELEGRAM SUPPRESSED: no bot token configured")
                         elif live_sentinel.TELEGRAM_BOT_TOKEN != "YOUR_TELEGRAM_BOT_TOKEN" and live_sentinel.TELEGRAM_BOT_TOKEN:
                             res2 = live_sentinel.send_telegram_message(summary_msg2)
                             if res2 and res2.status_code == 200:
-                                live_sentinel.session_start_time = None
-                                live_sentinel.low_count = 0
-                                live_sentinel.medium_count = 0
-                                live_sentinel.high_count = 0
-                                live_sentinel.session_events.clear()
+                                print("[TELEGRAM] Attack Session Summary sent successfully")
+                            else:
+                                print(f"[TELEGRAM] Attack Session Summary send failed — status will still be updated to resolved")
+
+                        # Write resolved status UNCONDITIONALLY after both containment
+                        # and summary are attempted. Isolated try-except so no earlier
+                        # exception can prevent this write.
+                        try:
+                            live_sentinel.update_threat_log_action(ip_address, "resolved", from_action="forensics_generated")
+                            live_sentinel.update_threat_log_action(ip_address, "resolved", from_action="pending")
+                            print(f"[STATUS] threat_log.json updated: {ip_address} → resolved")
+                        except Exception as e:
+                            print(f"[ERROR] Failed to write resolved status for {ip_address}: {e}")
+                            import traceback
+                            traceback.print_exc()
+
+                        # Atomic session reset
+                        live_sentinel.session_start_time = None
+                        live_sentinel.low_count = 0
+                        live_sentinel.medium_count = 0
+                        live_sentinel.high_count = 0
+                        live_sentinel.session_events.clear()
+                        live_sentinel.session_peak_event = None
+                        live_sentinel.session_high_ips.clear()
                                 
                 threading.Thread(target=handle_high, daemon=True).start()
                 

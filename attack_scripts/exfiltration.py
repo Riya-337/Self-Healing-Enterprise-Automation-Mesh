@@ -67,16 +67,16 @@ with open(log_file, 'a') as f:
             cpu_usage = random.uniform(0.25, 0.45)
             req_rate = random.uniform(1.0, 4.0)
         elif "Phase 2" in phase["name"]:
-            failed_logins = random.randint(5, 8)
-            ehr_access = random.randint(60, 100)
-            data_export = random.randint(300, 600)
-            cpu_usage = random.uniform(0.55, 0.70)
+            failed_logins = random.randint(5, 6)
+            ehr_access = random.randint(45, 60)
+            data_export = random.randint(300, 450)
+            cpu_usage = random.uniform(0.58, 0.63)
             req_rate = random.uniform(5.0, 8.0)
         else:
             failed_logins = random.randint(8, 14)
             ehr_access = random.randint(120, 200)
             data_export = random.randint(1500, 3000)
-            cpu_usage = random.uniform(0.70, 0.85)
+            cpu_usage = random.uniform(0.80, 0.92)
             req_rate = random.uniform(8.0, 12.0)
 
         # Create the structured precomputed feature event
@@ -98,18 +98,18 @@ with open(log_file, 'a') as f:
                 "lateral_movement_events": 0,
                 "access_time_deviation": 0.1,
                 "source_ip_reputation": 0.5,
-                "attack_type": "exfiltration" if failed_logins > 10 else "normal",
+                "attack_type": "exfiltration" if failed_logins > 7 else ("ddos" if failed_logins > 4 else "normal"),
                 "asset_type": "ehr",
                 "emergency_status": False,
                 "user_id": "U_SIM",
                 "role": "it_staff",
-                "memory_spike": 1 if cpu_usage > 0.8 else 0
+                "memory_spike": 1 if cpu_usage > 0.75 else 0
             }
         }
         
         f.write(json.dumps(event) + '\n')
         f.flush()
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Injected event ID: {event['event_id']} ({phase['name'].split(':')[0]})")
+        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Injected event ID: {event['event_id']}")
         
         # Wait 5 seconds between events to simulate realistic velocity
         time.sleep(5)

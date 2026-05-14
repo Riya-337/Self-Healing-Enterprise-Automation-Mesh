@@ -1,8 +1,15 @@
 import json
 import os
 from flask import Flask, jsonify
+try:
+    from flask_cors import CORS
+    _has_cors = True
+except ImportError:
+    _has_cors = False
 
 app = Flask(__name__)
+if _has_cors:
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 def get_system_state():
     status = "NORMAL"
@@ -18,6 +25,18 @@ def get_system_state():
                 status = "LOCKDOWN"
             elif threats:
                 status = "THREAT"
+                
+            # Count pending instances per IP for the visual indicator
+            pending_counts = {}
+            for t in threats:
+                if t['action'] == 'pending':
+                    pending_counts[t['ip']] = pending_counts.get(t['ip'], 0) + 1
+                    
+            for t in threats:
+                if t['action'] == 'pending' and pending_counts.get(t['ip'], 0) > 1:
+                    t['display_action'] = f"pending x{pending_counts[t['ip']]}"
+                else:
+                    t['display_action'] = t['action']
                 
     if os.path.exists('logs/blocked_ips.json'):
         with open('logs/blocked_ips.json', 'r') as f:
@@ -39,6 +58,14 @@ def get_system_state():
 def api_status():
     return jsonify(get_system_state())
 
+@app.route('/api/metrics')
+def api_metrics():
+    """Returns ML evaluation metrics from evaluation_metrics.json for the React frontend."""
+    if not os.path.exists('evaluation_metrics.json'):
+        return jsonify([])
+    with open('evaluation_metrics.json', 'r') as f:
+        return jsonify(json.load(f))
+
 def get_metrics_html():
     if not os.path.exists('evaluation_metrics.json'):
         return "<p style='color: #888;'>Metrics not generated yet.</p>"
@@ -59,7 +86,7 @@ def get_metrics_html():
         html += f"<td>{row['precision']:.2f}</td>"
         html += f"<td>{row['recall']:.2f}</td>"
         html += f"<td>{row['f1']:.2f}</td>"
-        html += f"<td>{row['auc_roc']:.2f}</td>"
+        html += f"<td>{row['auc_roc']:.4f}</td>"
         html += "</tr>"
         
     html += "</tbody></table>"
@@ -104,6 +131,7 @@ def index():
                 <div class="card">
                     <h2>System Status</h2>
                     <div class="status-badge">{state['status']}</div>
+                    {f'<p style="color:#aaa; font-size:0.85em; margin-top:10px;">⚠️ Multiple simultaneous High-tier threats are active and pending human authorization.</p>' if state["status"] == "LOCKDOWN" else ''}
                 </div>
                 <div class="card">
                     <h2>Blockchain Audit Ledger</h2>
@@ -134,7 +162,7 @@ def index():
                             <td style="font-family: monospace;">{t['ip']}</td>
                             <td style="color: {tier_color};">{t['tier']}</td>
                             <td>{t['score']:.3f}</td>
-                            <td>{t['action']}</td>
+                            <td>{t.get('display_action', t.get('action', ''))}</td>
                         </tr>
         """
     if not state['threats']:

@@ -1,0 +1,139 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 12px);
+  --radius-3xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-tier-high: var(--tier-high);
+  --color-tier-medium: var(--tier-medium);
+  --color-tier-low: var(--tier-low);
+  --color-status-normal: var(--status-normal);
+  --color-status-threat: var(--status-threat);
+  --color-status-lockdown: var(--status-lockdown);
+  --color-action-resolved: var(--action-resolved);
+  --color-action-pending: var(--action-pending);
+  --color-action-locked: var(--action-locked);
+  --color-action-forensics: var(--action-forensics);
+  --color-action-denied: var(--action-denied);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+:root {
+  --radius: 1.5rem; /* 24px cards */
+  --background: oklch(0.985 0.005 240);   /* #F8FAFC-ish */
+  --foreground: oklch(0.21 0.03 260);     /* slate-900 */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.03 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.03 260);
+  --primary: oklch(0.55 0.2 255);          /* blue-600 */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.96 0.005 250);
+  --secondary-foreground: oklch(0.25 0.03 260);
+  --muted: oklch(0.97 0.004 250);
+  --muted-foreground: oklch(0.55 0.02 260); /* slate-500 */
+  --accent: oklch(0.95 0.02 250);
+  --accent-foreground: oklch(0.25 0.03 260);
+  --destructive: oklch(0.62 0.23 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.92 0.005 250);         /* #E5E7EB */
+  --input: oklch(0.92 0.005 250);
+  --ring: oklch(0.55 0.2 255);
+  --brand: oklch(0.55 0.2 255);
+  --brand-soft: oklch(0.96 0.04 255);
+
+  --tier-high: oklch(0.6 0.23 25);         /* red-500 */
+  --tier-medium: oklch(0.7 0.18 50);       /* orange */
+  --tier-low: oklch(0.78 0.16 85);         /* amber/yellow */
+  --status-normal: oklch(0.7 0.17 150);
+  --status-threat: oklch(0.6 0.23 25);
+  --status-lockdown: oklch(0.7 0.18 50);
+  --action-resolved: oklch(0.6 0.16 150);
+  --action-pending: oklch(0.65 0.18 55);
+  --action-locked: oklch(0.6 0.23 25);
+  --action-forensics: oklch(0.55 0.22 305);
+  --action-denied: oklch(0.5 0.04 260);
+
+  --chart-1: oklch(0.6 0.18 255);
+  --chart-2: oklch(0.7 0.17 150);
+  --chart-3: oklch(0.7 0.18 50);
+  --chart-4: oklch(0.6 0.23 25);
+  --chart-5: oklch(0.78 0.16 85);
+
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.21 0.03 260);
+  --sidebar-primary: oklch(0.55 0.2 255);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.96 0.04 255);
+  --sidebar-accent-foreground: oklch(0.45 0.18 255);
+  --sidebar-border: oklch(0.92 0.005 250);
+  --sidebar-ring: oklch(0.55 0.2 255);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body { font-family: var(--font-sans); }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+}
+
+@layer utilities {
+  .font-mono-sec { font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .card-soft {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+    transition: box-shadow 200ms ease, transform 200ms ease;
+  }
+  .card-soft:hover { box-shadow: 0 8px 24px -8px rgb(15 23 42 / 0.10), 0 2px 6px -2px rgb(15 23 42 / 0.06); }
+  .pulse-threat { animation: pulseThreat 2s ease-in-out infinite; }
+  .live-dot     { animation: blink 1.4s ease-in-out infinite; }
+  .fade-in      { animation: fadeIn 400ms ease-out both; }
+  .fade-in-up   { animation: fadeInUp 500ms ease-out both; }
+  .map-marker-pulse { animation: mapMarkerPulse 2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+}
+
+@keyframes pulseThreat {
+  0%,100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--tier-high) 35%, transparent); }
+  50%     { box-shadow: 0 0 0 8px color-mix(in oklab, var(--tier-high) 0%, transparent); }
+}
+@keyframes blink   { 50% { opacity: 0.35; } }
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp{ from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes mapMarkerPulse {
+  0%,100% { opacity: 0.24; transform: scale(0.85); }
+  50% { opacity: 0.04; transform: scale(1.45); }
+}

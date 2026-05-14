@@ -5,61 +5,61 @@ INDIVIDUAL MODEL CLASSIFICATION REPORTS
 --- Model: RF ---
               precision    recall  f1-score   support
 
-         Low       0.98      0.94      0.96       875
-      Medium       0.82      0.94      0.87       259
+         Low       0.98      0.93      0.95       875
+      Medium       0.79      0.93      0.85       259
         High       1.00      1.00      1.00       125
 
-    accuracy                           0.94      1259
-   macro avg       0.93      0.96      0.94      1259
-weighted avg       0.95      0.94      0.95      1259
+    accuracy                           0.93      1259
+   macro avg       0.92      0.95      0.93      1259
+weighted avg       0.94      0.93      0.94      1259
 
 
 --- Model: GB ---
               precision    recall  f1-score   support
 
-         Low       0.98      0.94      0.96       875
-      Medium       0.82      0.95      0.88       259
-        High       1.00      1.00      1.00       125
-
-    accuracy                           0.95      1259
-   macro avg       0.93      0.96      0.95      1259
-weighted avg       0.95      0.95      0.95      1259
-
-
---- Model: SVM ---
-              precision    recall  f1-score   support
-
-         Low       0.97      0.93      0.95       875
-      Medium       0.80      0.92      0.86       259
-        High       1.00      1.00      1.00       125
-
-    accuracy                           0.94      1259
-   macro avg       0.93      0.95      0.94      1259
-weighted avg       0.94      0.94      0.94      1259
-
-
---- Model: LR ---
-              precision    recall  f1-score   support
-
-         Low       0.99      0.93      0.96       875
-      Medium       0.81      0.95      0.88       259
-        High       1.00      1.00      1.00       125
-
-    accuracy                           0.95      1259
-   macro avg       0.93      0.96      0.95      1259
-weighted avg       0.95      0.95      0.95      1259
-
-
---- Model: XGB ---
-              precision    recall  f1-score   support
-
          Low       0.98      0.93      0.96       875
-      Medium       0.80      0.95      0.87       259
+      Medium       0.81      0.93      0.87       259
         High       1.00      1.00      1.00       125
 
     accuracy                           0.94      1259
    macro avg       0.93      0.96      0.94      1259
 weighted avg       0.95      0.94      0.94      1259
+
+
+--- Model: SVM ---
+              precision    recall  f1-score   support
+
+         Low       0.98      0.91      0.94       875
+      Medium       0.75      0.92      0.83       259
+        High       1.00      1.00      1.00       125
+
+    accuracy                           0.92      1259
+   macro avg       0.91      0.94      0.92      1259
+weighted avg       0.93      0.92      0.92      1259
+
+
+--- Model: LR ---
+              precision    recall  f1-score   support
+
+         Low       0.98      0.93      0.95       875
+      Medium       0.79      0.93      0.85       259
+        High       1.00      1.00      1.00       125
+
+    accuracy                           0.93      1259
+   macro avg       0.92      0.95      0.94      1259
+weighted avg       0.94      0.93      0.94      1259
+
+
+--- Model: XGB ---
+              precision    recall  f1-score   support
+
+         Low       0.98      0.96      0.97       875
+      Medium       0.86      0.95      0.90       259
+        High       1.00      1.00      1.00       125
+
+    accuracy                           0.96      1259
+   macro avg       0.95      0.97      0.96      1259
+weighted avg       0.96      0.96      0.96      1259
 
 
 ============================================================
