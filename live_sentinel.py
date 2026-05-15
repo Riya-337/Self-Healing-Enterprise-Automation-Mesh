@@ -277,8 +277,10 @@ def send_high_summary(classification):
         session_high_ips.clear()
 
 def generate_shap_chart(ip, features):
-    plt.figure(figsize=(8, 4))
-    names = ['failed_logins', 'cpu_usage', 'ehr_access_per_hour', 'memory_spike', 'data_export_volume_kb']
+    plt.figure(figsize=(8, 5))
+    names = ['failed_logins', 'cpu_usage', 'ehr_access_per_hour', 'memory_spike',
+             'data_export_volume_kb', 'lateral_movement_events', 'access_time_deviation',
+             'source_ip_reputation']
     vals = [features.get(n, 0) for n in names]
     y_pos = np.arange(len(names))
     plt.barh(y_pos, vals, align='center', color='coral')
