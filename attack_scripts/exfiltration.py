@@ -66,18 +66,27 @@ with open(log_file, 'a') as f:
             data_export = random.randint(30, 80)
             cpu_usage = random.uniform(0.25, 0.45)
             req_rate = random.uniform(1.0, 4.0)
+            lateral_move = random.randint(0, 2)
+            access_dev = random.uniform(0.1, 1.0)
+            ip_rep = random.uniform(0.6, 0.9)
         elif "Phase 2" in phase["name"]:
             failed_logins = random.randint(5, 6)
             ehr_access = random.randint(45, 60)
             data_export = random.randint(300, 450)
             cpu_usage = random.uniform(0.58, 0.63)
             req_rate = random.uniform(5.0, 8.0)
+            lateral_move = random.randint(3, 7)
+            access_dev = random.uniform(1.5, 3.0)
+            ip_rep = random.uniform(0.25, 0.5)
         else:
             failed_logins = random.randint(8, 14)
             ehr_access = random.randint(120, 200)
             data_export = random.randint(1500, 3000)
             cpu_usage = random.uniform(0.80, 0.92)
             req_rate = random.uniform(8.0, 12.0)
+            lateral_move = random.randint(8, 15)
+            access_dev = random.uniform(3.5, 6.0)
+            ip_rep = random.uniform(0.02, 0.15)
 
         # Create the structured precomputed feature event
         event = {
@@ -95,9 +104,9 @@ with open(log_file, 'a') as f:
                 "ehr_access_per_hour": ehr_access,
                 "data_export_volume_kb": data_export,
                 "request_rate": req_rate,
-                "lateral_movement_events": 0,
-                "access_time_deviation": 0.1,
-                "source_ip_reputation": 0.5,
+                "lateral_movement_events": lateral_move,
+                "access_time_deviation": access_dev,
+                "source_ip_reputation": ip_rep,
                 "attack_type": "exfiltration" if failed_logins > 7 else ("ddos" if failed_logins > 4 else "normal"),
                 "asset_type": "ehr",
                 "emergency_status": False,
